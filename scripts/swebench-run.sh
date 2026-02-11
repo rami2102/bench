@@ -106,8 +106,12 @@ fi
 TOTAL_INSTANCES=$(wc -l < "$DATASET_FILE")
 echo "[swebench] Dataset: $TOTAL_INSTANCES instances"
 
-# --- Step 2: Select instances ---
-SELECTED_FILE="$DATASET_CACHE/selected-instances.jsonl"
+# --- Step 2: Prepare run directory and select instances ---
+RUN_ID="$(date +%Y%m%d-%H%M%S)-${AGENT}"
+RUN_DIR="$RESULTS_DIR/$RUN_ID"
+PREDICTIONS_FILE="$RUN_DIR/predictions.json"
+SELECTED_FILE="$RUN_DIR/selected-instances.jsonl"
+mkdir -p "$RUN_DIR"
 
 if [[ -n "$INSTANCE_IDS" ]]; then
   # Pick specific instances
@@ -133,10 +137,6 @@ print(f'Selected {n} instances')
 fi
 
 # --- Step 3: Run agent on each instance ---
-RUN_ID="$(date +%Y%m%d-%H%M%S)-${AGENT}"
-RUN_DIR="$RESULTS_DIR/$RUN_ID"
-PREDICTIONS_FILE="$RUN_DIR/predictions.json"
-mkdir -p "$RUN_DIR"
 
 echo "============================================="
 echo " SWE-Bench Lite Runner"

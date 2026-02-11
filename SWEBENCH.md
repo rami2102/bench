@@ -47,18 +47,22 @@ cd ~/git/SWE-bench && pip install -e .
 Use the helper scripts to run one isolated SWE-bench task per agent in Podman:
 
 ```bash
-# One-command wrapper (build + cache prep + codex/pi/gemini smoke runs)
-./scripts/podman-swebench-all.sh
+# One-command wrapper (build + smoke runs)
+./scripts/podman-swebench-all.sh --agents codex,pi --instance-ids "django__django-11049"
+
+# All agents in parallel on the same instance IDs
+./scripts/podman-swebench-all.sh --agents all --parallel --instance-ids "django__django-11049"
 
 # Or run steps separately:
 ./scripts/podman-build.sh
-./scripts/podman-swebench-smoke.sh
+./scripts/podman-swebench-smoke.sh --agents codex,pi,gemini --parallel
 ```
 
 Notes:
-- `scripts/podman-swebench-smoke.sh` pre-clones required repos on the host via `scripts/swebench-cache-local.sh`.
-- Local cache repos are mounted read-only into Podman at `cache/swebench/repos` for safer isolation.
-- Auth is reused non-interactively by mounting local agent auth folders (`~/.codex`, `~/.gemini`, `~/.pi`).
+- `scripts/podman-swebench-smoke.sh` supports `--agents <list|all>` and `--parallel`.
+- All selected agents run on the same `--instance-ids` set for fair comparison.
+- Repo caches are pre-cloned on host via `scripts/swebench-cache-local.sh` and mounted read-only at `cache/swebench/repos`.
+- Auth is reused non-interactively by mounting local agent auth folders (`~/.codex`, `~/.gemini`, `~/.pi`, `~/.claude`).
 
 ## Dataset
 

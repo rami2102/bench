@@ -22,7 +22,8 @@ RUN apt-get update \
 RUN npm install -g \
       @openai/codex \
       @google/gemini-cli \
-      @mariozechner/pi-coding-agent
+      @mariozechner/pi-coding-agent \
+      @anthropic-ai/claude-code
 
 WORKDIR /workspace
 
