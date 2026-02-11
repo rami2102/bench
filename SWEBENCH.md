@@ -47,11 +47,11 @@ cd ~/git/SWE-bench && pip install -e .
 Use the helper scripts to run one isolated SWE-bench task per agent in Podman:
 
 ```bash
-# Build container image with codex/gemini/pi CLIs
-./scripts/podman-build.sh
+# One-command wrapper (build + cache prep + codex/pi/gemini smoke runs)
+./scripts/podman-swebench-all.sh
 
-# Run 1 SWE-bench Lite task for codex, pi, and gemini
-# (gemini defaults to --model gemini-2.5-flash in this smoke script)
+# Or run steps separately:
+./scripts/podman-build.sh
 ./scripts/podman-swebench-smoke.sh
 ```
 
