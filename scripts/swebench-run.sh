@@ -205,6 +205,7 @@ while IFS= read -r LINE; do
   AGENT_PROMPT="You are a software engineer working on the repository '$REPO'.
 
 Fix the following GitHub issue by modifying the source code. Make only the minimal changes needed.
+Do not create commits or branches. Leave all changes uncommitted in the working tree.
 
 ## Issue Description
 

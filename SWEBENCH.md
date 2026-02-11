@@ -42,6 +42,24 @@ cd ~/git/SWE-bench && pip install -e .
 # Also requires Docker for the official harness
 ```
 
+## Podman (Isolated) Smoke Runs
+
+Use the helper scripts to run one isolated SWE-bench task per agent in Podman:
+
+```bash
+# Build container image with codex/gemini/pi CLIs
+./scripts/podman-build.sh
+
+# Run 1 SWE-bench Lite task for codex, pi, and gemini
+# (gemini defaults to --model gemini-2.5-flash in this smoke script)
+./scripts/podman-swebench-smoke.sh
+```
+
+Notes:
+- `scripts/podman-swebench-smoke.sh` pre-clones required repos on the host via `scripts/swebench-cache-local.sh`.
+- Local cache repos are mounted read-only into Podman at `cache/swebench/repos` for safer isolation.
+- Auth is reused non-interactively by mounting local agent auth folders (`~/.codex`, `~/.gemini`, `~/.pi`).
+
 ## Dataset
 
 - **Source:** `princeton-nlp/SWE-bench_Lite` from HuggingFace
