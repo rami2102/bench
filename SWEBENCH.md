@@ -42,27 +42,27 @@ cd ~/git/SWE-bench && pip install -e .
 # Also requires Docker for the official harness
 ```
 
-## Podman (Isolated) Smoke Runs
+## Podman (Isolated) Runs
 
-Use the helper scripts to run one isolated SWE-bench task per agent in Podman:
+Use the full runner for isolated SWE-bench evaluation in Podman (validation enabled by default):
 
 ```bash
-# One-command wrapper (build + smoke runs)
-./scripts/podman-swebench-all.sh --agents codex,pi --instance-ids "django__django-11049"
+# Build + run via one wrapper
+./scripts/podman-swebench-all.sh --agents codex,pi --num-tests 10
 
-# All agents in parallel on the same instance IDs
-./scripts/podman-swebench-all.sh --agents all --parallel --instance-ids "django__django-11049"
+# Same ordered tests for all agents, in parallel
+./scripts/podman-swebench-all.sh --agents all --parallel --test-list-file tests/swebench/round-robin-by-repo.md --num-tests 20
 
-# Or run steps separately:
-./scripts/podman-build.sh
-./scripts/podman-swebench-smoke.sh --agents codex,pi,gemini --parallel
+# Exact explicit instances
+./scripts/podman-swebench-run.sh --agents gemini,pi --instance-ids "django__django-11049,sympy__sympy-20590"
 ```
 
 Notes:
-- `scripts/podman-swebench-smoke.sh` supports `--agents <list|all>` and `--parallel`.
-- All selected agents run on the same `--instance-ids` set for fair comparison.
+- `scripts/podman-swebench-run.sh` supports `--agents <list|all>`, `--parallel`, `--num-tests <N|all>`, `--instance-ids`, `--test-list-file`.
+- Results persist on host disk after Podman exits under `results/swebench/<timestamp>-podman-run/...` (host folder is bind-mounted into container).
 - Repo caches are pre-cloned on host via `scripts/swebench-cache-local.sh` and mounted read-only at `cache/swebench/repos`.
 - Auth is reused non-interactively by mounting local agent auth folders (`~/.codex`, `~/.gemini`, `~/.pi`, `~/.claude`).
+- SWE-bench Lite is Python-focused; balancing is done round-robin by repository using `tests/swebench/round-robin-by-repo.md`.
 
 ## Dataset
 
