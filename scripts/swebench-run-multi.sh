@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BENCH_DIR="$(dirname "$SCRIPT_DIR")"
 
-IMAGE_NAME="${IMAGE_NAME:-bench-agents:latest}"
 AGENTS_CSV="${AGENTS:-codex,pi,gemini}"
 PARALLEL="${PARALLEL:-false}"
 NUM_TESTS="${NUM_TESTS:-1}"
@@ -12,16 +11,16 @@ INSTANCE_IDS="${INSTANCE_IDS:-}"
 TEST_LIST_FILE="${TEST_LIST_FILE:-$BENCH_DIR/tests/swebench/round-robin-by-repo.md}"
 TIMEOUT="${TIMEOUT:-900}"
 VALIDATE=true
+IMAGE_NAME="${IMAGE_NAME:-}"
 BUILD_IMAGE=false
 
-RUN_TAG="$(date +%Y%m%d-%H%M%S)-podman-run"
+RUN_TAG="$(date +%Y%m%d-%H%M%S)-host-run"
 RESULT_BASE="$BENCH_DIR/results/swebench/$RUN_TAG"
-CONTAINER_RESULT_BASE="/workspace/results/swebench/$RUN_TAG"
 LOG_DIR="$RESULT_BASE/logs"
 
 usage() {
   cat <<'EOF'
-Usage: podman-swebench-run.sh [options]
+Usage: swebench-run-multi.sh [options]
   --agents <list|all>        e.g. codex,pi or all
   --parallel                 Run selected agents concurrently
   --num-tests <N|all>        Number of tests (default: 1)
@@ -29,8 +28,8 @@ Usage: podman-swebench-run.sh [options]
   --test-list-file <path>    Ordered ID list file (default: round-robin)
   --timeout <sec>            Per-task timeout (default: 900)
   --no-validate              Disable validation (default: validate on)
-  --build-image              Build image before run
-  --image-name <name>        Podman image tag
+  --build-image              Ignored in host mode (compat)
+  --image-name <name>        Ignored in host mode (compat)
   --help, -h                 Show this help
 EOF
 }
@@ -70,6 +69,15 @@ validate_agents() {
   done
 }
 
+warn_compat_flags() {
+  if [[ "$BUILD_IMAGE" == "true" ]]; then
+    echo "[host-run] --build-image ignored (host mode)"
+  fi
+  if [[ -n "$IMAGE_NAME" ]]; then
+    echo "[host-run] --image-name ignored (host mode)"
+  fi
+}
+
 ensure_test_lists() {
   if [[ -f "$TEST_LIST_FILE" ]]; then
     return
@@ -82,24 +90,19 @@ ids_from_file() {
   python3 - "$1" "$2" <<'PY'
 import re, sys
 path, n = sys.argv[1], sys.argv[2]
-ids = []
+ids=[]
 for line in open(path):
-    s = line.strip()
+    s=line.strip()
     if not s or s.startswith('#'): continue
-    s = re.sub(r'^[-*]\s*', '', s)
-    ids.append(s)
-if n == 'all':
-    print(','.join(ids)); sys.exit(0)
-count = max(0, int(n))
-print(','.join(ids[:count]))
+    ids.append(re.sub(r'^[-*]\s*', '', s))
+print(','.join(ids if n=='all' else ids[:max(0,int(n))]))
 PY
 }
 
 ids_all_dataset() {
   python3 - "$1" <<'PY'
 import json, sys
-ids=[json.loads(l)['instance_id'] for l in open(sys.argv[1])]
-print(','.join(ids))
+print(','.join(json.loads(l)['instance_id'] for l in open(sys.argv[1])))
 PY
 }
 
@@ -114,34 +117,6 @@ resolve_instance_ids() {
   [[ -n "$SELECTED_IDS_CSV" ]] || { echo "No instance IDs selected" >&2; exit 1; }
 }
 
-build_image_if_needed() {
-  if [[ "$BUILD_IMAGE" != "true" ]]; then
-    return
-  fi
-  IMAGE_NAME="$IMAGE_NAME" bash "$SCRIPT_DIR/podman-build.sh"
-}
-
-prepare_cache() {
-  bash "$SCRIPT_DIR/swebench-cache-local.sh" --instance-ids "$SELECTED_IDS_CSV"
-}
-
-mounts() {
-  MOUNTS=(
-    "-v" "$BENCH_DIR:/workspace:Z"
-    "-v" "$BENCH_DIR/cache/swebench/repos:/workspace/cache/swebench/repos:ro,Z"
-    "-v" "$HOME/.codex:/home/node/.codex:Z"
-    "-v" "$HOME/.gemini:/home/node/.gemini:Z"
-    "-v" "$HOME/.pi:/home/node/.pi:Z"
-    "-v" "$HOME/.gitconfig:/home/node/.gitconfig:Z"
-  )
-  if [[ -d "$HOME/.claude" ]]; then
-    MOUNTS+=("-v" "$HOME/.claude:/home/node/.claude:Z")
-  fi
-  if [[ -f "$HOME/.claude.json" ]]; then
-    MOUNTS+=("-v" "$HOME/.claude.json:/home/node/.claude.json:Z")
-  fi
-}
-
 model_arg_for() {
   [[ "$1" == "gemini" ]] && echo "--model ${GEMINI_MODEL:-gemini-2.5-flash}" || true
 }
@@ -152,23 +127,19 @@ validate_flag() {
 
 run_agent() {
   local agent="$1" model="$(model_arg_for "$1")" no_val="$(validate_flag)"
-  local log="$LOG_DIR/${agent}.log"
-  local host_results="$RESULT_BASE/$agent"
-  local ctr_results="$CONTAINER_RESULT_BASE/$agent"
-  mkdir -p "$host_results" "$LOG_DIR"
-  podman run --rm --userns=keep-id --user "$(id -u):$(id -g)" --network host \
-    "${MOUNTS[@]}" -w /workspace "$IMAGE_NAME" bash -lc \
-    "./scripts/bench.sh swebench --agent $agent $model --instance-ids $SELECTED_IDS_CSV --timeout $TIMEOUT --results-dir $ctr_results $no_val" \
-    > "$log" 2>&1
+  local log="$LOG_DIR/${agent}.log" results="$RESULT_BASE/$agent"
+  mkdir -p "$results" "$LOG_DIR"
+  bash "$SCRIPT_DIR/bench.sh" swebench --agent "$agent" $model \
+    --instance-ids "$SELECTED_IDS_CSV" --timeout "$TIMEOUT" \
+    --results-dir "$results" $no_val > "$log" 2>&1
 }
 
 run_parallel() {
-  pids=(); names=()
+  pids=(); names=(); FAILURES=0
   for raw in "${AGENTS[@]}"; do
     a="$(echo "$raw" | xargs)"; run_agent "$a" &
     pids+=("$!"); names+=("$a")
   done
-  FAILURES=0
   for i in "${!pids[@]}"; do
     wait "${pids[$i]}" || FAILURES=$((FAILURES+1))
   done
@@ -183,17 +154,14 @@ run_sequential() {
 }
 
 latest_run_dir() {
-  local base="$1"
-  find "$base" -mindepth 1 -maxdepth 1 -type d | sort | tail -1
+  find "$1" -mindepth 1 -maxdepth 1 -type d | sort | tail -1
 }
 
 print_agent_summary() {
-  local agent="$1" dir="$2" summary="$dir/summary.json"
-  python3 - "$agent" "$summary" <<'PY'
+  python3 - "$1" "$2/summary.json" <<'PY'
 import json, sys
 agent, path = sys.argv[1], sys.argv[2]
-s=json.load(open(path))
-t=max(1,int(s['total_tasks']))
+s=json.load(open(path)); t=max(1,int(s['total_tasks']))
 r,f,e=s['resolved'],s['failed'],s['errors']
 p=lambda x: round(100*x/t,2)
 print(f"{agent}: resolved {r}/{t} ({p(r)}%), failed {f}/{t} ({p(f)}%), errors {e}/{t} ({p(e)}%)")
@@ -201,7 +169,7 @@ PY
 }
 
 print_final_summary() {
-  echo "[podman-run] Results persisted at: $RESULT_BASE"
+  echo "[host-run] Results persisted at: $RESULT_BASE"
   for raw in "${AGENTS[@]}"; do
     a="$(echo "$raw" | xargs)"; base="$RESULT_BASE/$a"
     dir="$(latest_run_dir "$base")"; [[ -n "$dir" ]] || continue
@@ -211,7 +179,7 @@ print_final_summary() {
 
 main() {
   parse_args "$@"; parse_agents; validate_agents
-  resolve_instance_ids; build_image_if_needed; prepare_cache; mounts
+  warn_compat_flags; resolve_instance_ids
   mkdir -p "$RESULT_BASE" "$LOG_DIR"
   if [[ "$PARALLEL" == "true" ]]; then
     run_parallel

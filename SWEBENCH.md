@@ -42,6 +42,25 @@ cd ~/git/SWE-bench && pip install -e .
 # Also requires Docker for the official harness
 ```
 
+## Host (Non-Podman) Multi-Agent Runs
+
+Run the same multi-agent logic directly on host (no Podman):
+
+```bash
+# Deterministic first N from round-robin list
+./scripts/swebench-run-multi.sh --agents codex,pi --num-tests 10
+
+# Same tests for all selected agents in parallel
+./scripts/swebench-run-multi.sh --agents all --parallel --test-list-file tests/swebench/round-robin-by-repo.md --num-tests 20
+
+# Exact explicit instances
+./scripts/swebench-run-multi.sh --agents gemini,pi --instance-ids "django__django-11049,sympy__sympy-20590"
+```
+
+Notes:
+- Supports the same selection switches as Podman runner (`--agents`, `--parallel`, `--num-tests`, `--instance-ids`, `--test-list-file`).
+- Saves per-agent results and per-agent percentages under `results/swebench/<timestamp>-host-run/...`.
+
 ## Podman (Isolated) Runs
 
 Use the full runner for isolated SWE-bench evaluation in Podman (validation enabled by default):
