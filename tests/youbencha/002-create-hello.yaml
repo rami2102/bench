@@ -1,0 +1,7 @@
+name: "Create Hello World Script"
+description: "Agent should create a hello.py file with a hello world function"
+repo: https://github.com/youbencha/hello-world.git
+branch: main
+prompt: "Create a new file called hello.py with a function called greet(name) that returns the string 'Hello, {name}!'. Include a main block that calls greet('World') and prints the result."
+expected_file: hello.py
+expected_pattern: "def greet"

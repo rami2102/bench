@@ -1,0 +1,7 @@
+name: "Fix Off-by-One Bug"
+description: "Agent should fix an off-by-one error in a simple script"
+repo: local
+local_src: /home/node/git/bench/tests/youbencha/local-src/003
+prompt: "There is a file called counter.py with an off-by-one bug in the count_up function. The function should count from 1 to n (inclusive), but currently it counts from 1 to n-1. Fix the bug."
+expected_file: counter.py
+expected_pattern: "range\(1,\s*n\s*\+\s*1\)"

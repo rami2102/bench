@@ -1,0 +1,7 @@
+name: "Add README Comment"
+description: "Agent should add a helpful comment to the top of README.md"
+repo: https://github.com/youbencha/hello-world.git
+branch: main
+prompt: "Add a comment at the very top of README.md that says: # This is a test repository for benchmarking AI coding agents. Do NOT remove any existing content."
+expected_file: readme.md
+expected_pattern: "test repository"

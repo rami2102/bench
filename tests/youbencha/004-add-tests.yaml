@@ -1,0 +1,7 @@
+name: "Add Unit Tests"
+description: "Agent should create unit tests for an existing module"
+repo: local
+local_src: /home/node/git/bench/tests/youbencha/local-src/004
+prompt: "Create a test file called test_math_utils.py that tests the add and multiply functions in math_utils.py using pytest. Write at least 3 test cases."
+expected_file: test_math_utils.py
+expected_pattern: "def test_"

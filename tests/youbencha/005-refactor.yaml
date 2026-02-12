@@ -1,0 +1,7 @@
+name: "Refactor to Use Dictionary"
+description: "Agent should refactor if/elif chain to use a dictionary lookup"
+repo: local
+local_src: /home/node/git/bench/tests/youbencha/local-src/005
+prompt: "Refactor the get_day_name function in days.py to use a dictionary lookup instead of the if/elif chain. Keep the same function signature and behavior."
+expected_file: days.py
+expected_pattern: "(dict|{.*:.*})"
