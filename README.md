@@ -11,6 +11,29 @@ Run **youBencha** and **SWE-Bench Lite** against any CLI coding agent from a sin
 | **Gemini CLI** | `gemini` | `-p <prompt>` | `-y` (YOLO mode) |
 | **pi** | `pi` | `-p` (print mode) | `--no-session` |
 
+## Recommended First: Validated SWE-bench Multi-Agent Runs
+
+These run **correctness validation by default** (pass/fail based on SWE-bench validation), and save results to disk.
+
+```bash
+# Non-Podman (host): same ordered tests for multiple agents
+./scripts/swebench-run-multi.sh --agents codex,pi --num-tests 10
+
+# Podman (isolated): same tests for all selected agents, in parallel
+./scripts/podman-swebench-run.sh --agents all --parallel --num-tests 10
+
+# One-command Podman wrapper (build image + run)
+./scripts/podman-swebench-all.sh --agents codex,pi --num-tests 10
+```
+
+Key flags:
+- `--agents <list|all>`
+- `--parallel`
+- `--num-tests <N|all>`
+- `--instance-ids <id1,id2,...>` (exact tests)
+- `--test-list-file <path>` (deterministic ordered selection)
+- `--no-validate` (optional override; default is validate ON)
+
 ## Quick Start
 
 ```bash
@@ -20,7 +43,7 @@ Run **youBencha** and **SWE-Bench Lite** against any CLI coding agent from a sin
 # 2. Run 1 SWE-bench task with Claude Code
 ./scripts/bench.sh swebench --agent claude --num-tests 1
 
-# 3. Compare agents on same tests
+# 3. Compare agents on same tests (youBencha)
 ./scripts/bench.sh youbencha -a claude -n 5
 ./scripts/bench.sh youbencha -a pi -n 5
 ./scripts/bench.sh youbencha -a gemini -n 5
@@ -82,13 +105,21 @@ bench/
 ├── SWEBENCH.md            # SWE-Bench Lite docs
 ├── AGENTS.md              # Agent CLI reference
 ├── scripts/
-│   ├── bench.sh           # Unified entry point
-│   ├── agent-run.sh       # Agent CLI wrapper
-│   ├── youbencha-run.sh   # youBencha runner
-│   ├── youbencha-init.sh  # Create sample tests
-│   └── swebench-run.sh    # SWE-Bench Lite runner
+│   ├── bench.sh                  # Unified single-agent entry point
+│   ├── swebench-run.sh           # SWE-Bench Lite single-agent runner
+│   ├── swebench-run-multi.sh     # Host multi-agent SWE-bench runner
+│   ├── swebench-all.sh           # Host wrapper (build test lists + run)
+│   ├── podman-build.sh           # Build Podman benchmark image
+│   ├── podman-swebench-run.sh    # Podman multi-agent SWE-bench runner
+│   ├── podman-swebench-all.sh    # Podman wrapper (build + run)
+│   ├── swebench-build-test-lists.sh # Build deterministic test lists
+│   ├── swebench-cache-local.sh   # Pre-clone local SWE-bench repos
+│   ├── agent-run.sh              # Agent CLI wrapper
+│   ├── youbencha-run.sh          # youBencha runner
+│   └── youbencha-init.sh         # Create sample tests
 ├── tests/
-│   └── youbencha/         # Test YAML files (auto-created)
+│   ├── youbencha/                # youBencha test YAML files
+│   └── swebench/                 # SWE-bench instance ID lists
 ├── results/               # Run results (gitignored)
 │   ├── youbencha/
 │   └── swebench/
