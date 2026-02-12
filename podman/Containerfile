@@ -14,9 +14,13 @@ RUN apt-get update \
        jq \
        python3 \
        python3-pip \
+       python3-venv \
        sed \
        tini \
     && rm -rf /var/lib/apt/lists/*
+
+# Python packages for SWE-bench (datasets for downloading, swebench for harness)
+RUN pip3 install --break-system-packages datasets swebench
 
 # Agent CLIs used by this benchmark
 RUN npm install -g \

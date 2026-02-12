@@ -18,7 +18,7 @@ Run real GitHub issues from SWE-Bench Lite (300 tasks) against any agent.
 ## Running
 
 ```bash
-# Quick test: 1 random task
+# Quick test: 1 random task (uses Docker harness for validation by default)
 ./scripts/bench.sh swebench --agent pi --num-tests 1
 
 # 5 random tasks
@@ -27,19 +27,24 @@ Run real GitHub issues from SWE-Bench Lite (300 tasks) against any agent.
 # Specific instance
 ./scripts/bench.sh swebench --agent pi --instance-ids "django__django-11049"
 
-# With official harness evaluation (requires Docker + swebench package)
-./scripts/bench.sh swebench --agent claude --num-tests 5 --use-harness
+# Patch-only (no validation)
+./scripts/bench.sh swebench --agent pi --num-tests 1 --no-validate
+
+# Use lightweight local validation (NOT recommended — fails for complex deps)
+./scripts/bench.sh swebench --agent pi --num-tests 1 --no-harness
 ```
 
 ## Prerequisites
 
 ```bash
-# Required: Python datasets library
-pip install datasets
+# Required: Python packages
+pip install datasets swebench
 
-# Optional: Official SWE-bench harness (for verified evaluation)
-cd ~/git/SWE-bench && pip install -e .
-# Also requires Docker for the official harness
+# Required: Docker daemon running (for official harness evaluation)
+# The harness pulls pre-built Docker images with all project dependencies
+docker info  # verify Docker works
+
+# Alternative: Podman with Docker CLI compat also works
 ```
 
 ## Host (Non-Podman) Multi-Agent Runs
@@ -92,27 +97,24 @@ Notes:
 
 ## Evaluation Levels
 
-### Level 1: Test Validation (default)
-For each patch, the script:
-- Creates a Python venv and installs the project
-- Applies the dataset's `test_patch` (adds/updates test cases)
-- Runs `FAIL_TO_PASS` tests via pytest — these should pass after a correct fix
-- Runs `PASS_TO_PASS` tests (up to 20) — checks for regressions
-- **Verdict:** `resolved`, `partially_resolved`, `not_resolved`, `tests_not_runnable`
-
-⚠️ **Limitations:** Some older repos need specific Python versions (e.g., Python 3.8/3.9).
-If tests can't run due to dependency issues, the verdict is `tests_not_runnable`.
-For full compatibility, use the official Docker harness.
+### Level 1: Docker Harness (default)
+Uses the official SWE-bench Docker harness for evaluation:
+- Pulls pre-built Docker images with all project dependencies pre-installed
+- Applies the agent's patch inside the container
+- Runs the project's full test suite (FAIL_TO_PASS + PASS_TO_PASS)
+- Reports `resolved` / `not_resolved` based on test results
+- **No dependency installation issues** — everything is pre-built in Docker images
+- Requires: Docker daemon + `pip install swebench`
 
 ### Level 2: `--no-validate` (patch-only)
 Skip all validation. Only checks if a patch was generated.
 
-### Level 3: Official Docker Harness (`--use-harness`)
-Runs the full SWE-bench evaluation in Docker containers with correct Python versions:
-- Applies the patch to the repo
-- Runs the project's full test suite
-- Reports pass/fail based on tests
-- Requires: Docker + `pip install swebench`
+### Level 3: `--no-harness` (lightweight local validation)
+Falls back to the old lightweight validation:
+- Creates a Python venv and tries to `pip install` the project
+- Applies test patches and runs pytest locally
+- ⚠️ **NOT recommended** — fails for projects with complex C/Fortran deps
+- Verdict: `resolved`, `partially_resolved`, `not_resolved`, `tests_not_runnable`
 
 ## Output Structure
 

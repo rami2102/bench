@@ -16,7 +16,8 @@
 #   --results-dir, -r    Output directory (default: ../results/swebench)
 #   --timeout            Timeout per task in seconds (default: 600)
 #   --instance-ids       Comma-separated specific instance IDs to run
-#   --use-harness        Use official SWE-bench Docker harness for evaluation
+#   --use-harness        Use official SWE-bench Docker harness for evaluation (default)
+#   --no-harness         Use lightweight local validation (may fail for complex deps)
 #   --dataset-cache      Path to cache dataset (default: ../cache/swebench)
 #   --help, -h           Show this help
 
@@ -32,7 +33,7 @@ NUM_TESTS=2
 RESULTS_DIR="$BENCH_DIR/results/swebench"
 TIMEOUT=600
 INSTANCE_IDS=""
-USE_HARNESS=false
+USE_HARNESS=true
 VALIDATE=true
 DATASET_CACHE="$BENCH_DIR/cache/swebench"
 
@@ -50,7 +51,8 @@ while [[ $# -gt 0 ]]; do
     --timeout)         TIMEOUT="$2"; shift 2 ;;
     --instance-ids)    INSTANCE_IDS="$2"; shift 2 ;;
     --use-harness)     USE_HARNESS=true; shift ;;
-    --no-validate)     VALIDATE=false; shift ;;
+    --no-harness)      USE_HARNESS=false; shift ;;
+    --no-validate)     VALIDATE=false; USE_HARNESS=false; shift ;;
     --dataset-cache)   DATASET_CACHE="$2"; shift 2 ;;
     --help|-h)         usage ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
@@ -220,12 +222,12 @@ $HINTS"
   # Save prompt
   echo "$AGENT_PROMPT" > "$TASK_DIR/prompt.txt"
 
-  # Run agent
+  # Run agent (stdin from /dev/null so agent can't consume the while-read loop's input)
   START_TIME=$(date +%s)
   set +e
   timeout "$TIMEOUT" bash "$SCRIPT_DIR/agent-run.sh" \
     "$AGENT" "$WORKSPACE" "$AGENT_PROMPT" "$MODEL" \
-    > "$TASK_DIR/agent-output.txt" 2>&1
+    < /dev/null > "$TASK_DIR/agent-output.txt" 2>&1
   EXIT_CODE=$?
   set -e
   END_TIME=$(date +%s)
@@ -266,8 +268,9 @@ $PATCH"
     echo "    📝 patch: ${DIFF_LINES} lines (${DURATION}s)"
 
     # Evaluate — Level 2: run actual tests (unless --no-validate)
-    if $VALIDATE; then
-      echo "    🧪 Validating patch with project tests..."
+    if $VALIDATE && ! $USE_HARNESS; then
+      # Lightweight local validation (may fail for complex projects)
+      echo "    🧪 Validating patch with local tests..."
       set +e
       bash "$SCRIPT_DIR/swebench-validate.sh" "$TASK_DIR" "$LINE" \
         > "$TASK_DIR/validation-output.txt" 2>&1
@@ -305,6 +308,11 @@ $PATCH"
           grep -E "^\[validate\]|FAIL:|PASS:|REGRESSION:" "$TASK_DIR/validation-output.txt" | tail -10 | sed 's/^/    /'
         fi
       fi
+    elif $USE_HARNESS; then
+      # Harness validation deferred to after all tasks — just record patch for now
+      STATUS="patch_generated"
+      PASSED=$((PASSED+1))
+      echo "    📝 patch: ${DIFF_LINES} lines — harness validation deferred (${DURATION}s)"
     else
       STATUS="patch_generated"
       PASSED=$((PASSED+1))
@@ -352,21 +360,38 @@ for i in "${!PREDICTIONS[@]}"; do
 done
 echo "]" >> "$PREDICTIONS_FILE"
 
-# --- Step 5: Run SWE-bench harness (if requested and available) ---
-if $USE_HARNESS; then
+# --- Step 5: Run SWE-bench Docker harness for validation ---
+PATCH_COUNT=$(python3 -c "
+import json
+preds = json.load(open('$PREDICTIONS_FILE'))
+print(sum(1 for p in preds if p.get('model_patch','').strip()))
+" 2>/dev/null || echo "0")
+
+if $USE_HARNESS && [[ "$PATCH_COUNT" -gt 0 ]]; then
   echo ""
-  echo "[swebench] Running official evaluation harness..."
-  if python3 -c "import swebench" 2>/dev/null; then
-    cd "$RUN_DIR"
-    python3 -m swebench.harness.run_evaluation \
-      --dataset_name princeton-nlp/SWE-bench_Lite \
-      --predictions_path "$PREDICTIONS_FILE" \
-      --max_workers 2 \
-      --run_id "$RUN_ID" 2>&1 | tee "$RUN_DIR/harness-output.txt"
+  echo "[swebench] Running official Docker-based evaluation harness..."
+  echo "[swebench] This uses pre-built Docker images with all deps — no local install issues."
+  echo "[swebench] $PATCH_COUNT patches to validate"
+  set +e
+  bash "$SCRIPT_DIR/swebench-validate-harness.sh" "$RUN_DIR" \
+    --timeout "$TIMEOUT" --max-workers 2
+  HARNESS_EXIT=$?
+  set -e
+
+  if [[ $HARNESS_EXIT -eq 0 && -f "$RUN_DIR/harness-results.json" ]]; then
+    # Re-read results from harness
+    HARNESS_RESOLVED=$(python3 -c "import json; print(json.load(open('$RUN_DIR/harness-results.json'))['resolved'])" 2>/dev/null || echo 0)
+    HARNESS_FAILED=$(python3 -c "import json; print(json.load(open('$RUN_DIR/harness-results.json'))['not_resolved'])" 2>/dev/null || echo 0)
+    HARNESS_ERRORS=$(python3 -c "import json; print(json.load(open('$RUN_DIR/harness-results.json'))['errors'])" 2>/dev/null || echo 0)
+    PASSED=$HARNESS_RESOLVED
+    FAILED=$HARNESS_FAILED
+    ERRORS=$HARNESS_ERRORS
+    echo "[swebench] Harness: $HARNESS_RESOLVED resolved, $HARNESS_FAILED failed, $HARNESS_ERRORS errors"
   else
-    echo "WARNING: swebench package not installed. Skipping harness evaluation."
-    echo "Install with: cd ~/git/SWE-bench && pip install -e ."
+    echo "[swebench] WARNING: Harness validation failed (exit=$HARNESS_EXIT)"
   fi
+elif $USE_HARNESS; then
+  echo "[swebench] No patches generated — skipping harness validation"
 fi
 
 # --- Summary ---
@@ -381,7 +406,13 @@ echo " Total tasks:     $NUM_TESTS"
 echo " ${VALIDATED_LABEL}:    $PASSED ✅"
 echo " Failed:          $FAILED ❌"
 echo " Errors/timeouts: $ERRORS 💥"
-echo " Validation:      $($VALIDATE && echo 'ENABLED (tests run)' || echo 'DISABLED (patch-only)')"
+if $USE_HARNESS; then
+  echo " Validation:      Docker harness (official SWE-bench)"
+elif $VALIDATE; then
+  echo " Validation:      Local (lightweight, may miss deps)"
+else
+  echo " Validation:      DISABLED (patch-only)"
+fi
 echo " Total duration:  ${TOTAL_DURATION}s"
 echo " Predictions:     $PREDICTIONS_FILE"
 echo " Results dir:     $RUN_DIR"
@@ -395,6 +426,7 @@ cat > "$RUN_DIR/summary.json" << ENDJSON
   "model": "${MODEL:-default}",
   "total_tasks": $NUM_TESTS,
   "validated": $VALIDATE,
+  "use_harness": $USE_HARNESS,
   "resolved": $PASSED,
   "failed": $FAILED,
   "errors": $ERRORS,

@@ -1,3 +1,8 @@
 results/
 cache/
+logs/
 tests/youbencha/local-src/
+scripts/logs/
+scripts/*.json
+*.json.backup*
+test-agent.*.json

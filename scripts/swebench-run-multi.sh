@@ -11,6 +11,7 @@ INSTANCE_IDS="${INSTANCE_IDS:-}"
 TEST_LIST_FILE="${TEST_LIST_FILE:-$BENCH_DIR/tests/swebench/round-robin-by-repo.md}"
 TIMEOUT="${TIMEOUT:-900}"
 VALIDATE=true
+USE_HARNESS=true
 IMAGE_NAME="${IMAGE_NAME:-}"
 BUILD_IMAGE=false
 
@@ -43,7 +44,8 @@ parse_args() {
       --instance-ids) INSTANCE_IDS="$2"; shift 2 ;;
       --test-list-file) TEST_LIST_FILE="$2"; shift 2 ;;
       --timeout) TIMEOUT="$2"; shift 2 ;;
-      --no-validate) VALIDATE=false; shift ;;
+      --no-validate) VALIDATE=false; USE_HARNESS=false; shift ;;
+      --no-harness) USE_HARNESS=false; shift ;;
       --build-image) BUILD_IMAGE=true; shift ;;
       --image-name) IMAGE_NAME="$2"; shift 2 ;;
       --help|-h) usage; exit 0 ;;
@@ -122,7 +124,14 @@ model_arg_for() {
 }
 
 validate_flag() {
-  $VALIDATE && echo "" || echo "--no-validate"
+  if ! $VALIDATE; then
+    echo "--no-validate"
+  elif ! $USE_HARNESS; then
+    echo "--no-harness"
+  else
+    # Harness validation — agent run is patch-only, harness validates after
+    echo ""
+  fi
 }
 
 run_agent() {

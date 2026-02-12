@@ -12,6 +12,7 @@ INSTANCE_IDS="${INSTANCE_IDS:-}"
 TEST_LIST_FILE="${TEST_LIST_FILE:-$BENCH_DIR/tests/swebench/round-robin-by-repo.md}"
 TIMEOUT="${TIMEOUT:-900}"
 VALIDATE=true
+USE_HARNESS=true
 BUILD_IMAGE=false
 
 RUN_TAG="$(date +%Y%m%d-%H%M%S)-podman-run"
@@ -28,7 +29,8 @@ Usage: podman-swebench-run.sh [options]
   --instance-ids <csv>       Explicit SWE-bench instance IDs
   --test-list-file <path>    Ordered ID list file (default: round-robin)
   --timeout <sec>            Per-task timeout (default: 900)
-  --no-validate              Disable validation (default: validate on)
+  --no-validate              Disable all validation
+  --no-harness               Use lightweight local validation (not recommended)
   --build-image              Build image before run
   --image-name <name>        Podman image tag
   --help, -h                 Show this help
@@ -44,7 +46,8 @@ parse_args() {
       --instance-ids) INSTANCE_IDS="$2"; shift 2 ;;
       --test-list-file) TEST_LIST_FILE="$2"; shift 2 ;;
       --timeout) TIMEOUT="$2"; shift 2 ;;
-      --no-validate) VALIDATE=false; shift ;;
+      --no-validate) VALIDATE=false; USE_HARNESS=false; shift ;;
+      --no-harness) USE_HARNESS=false; shift ;;
       --build-image) BUILD_IMAGE=true; shift ;;
       --image-name) IMAGE_NAME="$2"; shift 2 ;;
       --help|-h) usage; exit 0 ;;
@@ -147,7 +150,9 @@ model_arg_for() {
 }
 
 validate_flag() {
-  $VALIDATE && echo "" || echo "--no-validate"
+  # Inside podman: always --no-validate (patch-only).
+  # Harness validation runs on host after podman exits (needs Docker).
+  echo "--no-validate"
 }
 
 run_agent() {
@@ -200,12 +205,43 @@ print(f"{agent}: resolved {r}/{t} ({p(r)}%), failed {f}/{t} ({p(f)}%), errors {e
 PY
 }
 
+run_harness_validation() {
+  if ! $USE_HARNESS || ! $VALIDATE; then
+    echo "[podman-run] Harness validation skipped"
+    return
+  fi
+  echo ""
+  echo "[podman-run] Running SWE-bench Docker harness on host for validation..."
+  for raw in "${AGENTS[@]}"; do
+    a="$(echo "$raw" | xargs)"; base="$RESULT_BASE/$a"
+    dir="$(latest_run_dir "$base")"
+    [[ -n "$dir" && -f "$dir/predictions.json" ]] || continue
+    echo "[podman-run] Validating $a patches..."
+    set +e
+    bash "$SCRIPT_DIR/swebench-validate-harness.sh" "$dir" \
+      --timeout "$TIMEOUT" --max-workers 2
+    set -e
+  done
+}
+
 print_final_summary() {
   echo "[podman-run] Results persisted at: $RESULT_BASE"
   for raw in "${AGENTS[@]}"; do
     a="$(echo "$raw" | xargs)"; base="$RESULT_BASE/$a"
     dir="$(latest_run_dir "$base")"; [[ -n "$dir" ]] || continue
-    print_agent_summary "$a" "$dir"
+    if [[ -f "$dir/harness-results.json" ]]; then
+      # Use harness results
+      python3 - "$a" "$dir/harness-results.json" <<'PY'
+import json, sys
+agent = sys.argv[1]
+h = json.load(open(sys.argv[2]))
+r, nr, e = h['resolved'], h['not_resolved'], h['errors']
+t = r + nr + e
+print(f"{agent}: resolved {r}/{t}, not_resolved {nr}/{t}, errors {e}/{t} (Docker harness)")
+PY
+    elif [[ -f "$dir/summary.json" ]]; then
+      print_agent_summary "$a" "$dir"
+    fi
   done
 }
 
@@ -218,6 +254,7 @@ main() {
   else
     run_sequential
   fi
+  run_harness_validation
   print_final_summary
   [[ ${FAILURES:-0} -eq 0 ]]
 }
