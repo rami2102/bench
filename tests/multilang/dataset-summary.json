@@ -1,0 +1,296 @@
+{
+  "total_instances": 400,
+  "per_language_counts": {
+    "python": 50,
+    "js": 50,
+    "ts": 50,
+    "java": 50,
+    "c++": 50,
+    "go": 50,
+    "rust": 50,
+    "c": 50
+  },
+  "per_language_repos": {
+    "python": [
+      "astropy",
+      "django",
+      "matplotlib",
+      "pylint",
+      "pytest",
+      "requests",
+      "scikit-learn",
+      "seaborn",
+      "sphinx",
+      "sympy",
+      "xarray"
+    ],
+    "js": [
+      "axios",
+      "dayjs",
+      "github-readme-stats",
+      "svelte"
+    ],
+    "ts": [
+      "core",
+      "darkreader",
+      "material-ui"
+    ],
+    "java": [
+      "dubbo",
+      "fastjson2",
+      "gson",
+      "jackson-core",
+      "jackson-databind",
+      "jackson-dataformat-xml",
+      "jib",
+      "logstash",
+      "mockito"
+    ],
+    "c++": [
+      "Catch2",
+      "fmt",
+      "json",
+      "simdjson"
+    ],
+    "go": [
+      "cli",
+      "go-zero"
+    ],
+    "rust": [
+      "clap",
+      "fd",
+      "nushell",
+      "ripgrep",
+      "serde",
+      "tokio",
+      "tracing"
+    ],
+    "c": [
+      "jq",
+      "ponyc",
+      "zstd"
+    ]
+  },
+  "per_difficulty_counts": {
+    "easy": 100,
+    "medium": 174,
+    "hard": 126
+  },
+  "unique_repos": [
+    {
+      "repo": "zstd",
+      "org": "facebook",
+      "language": "c"
+    },
+    {
+      "repo": "jq",
+      "org": "jqlang",
+      "language": "c"
+    },
+    {
+      "repo": "ponyc",
+      "org": "ponylang",
+      "language": "c"
+    },
+    {
+      "repo": "Catch2",
+      "org": "catchorg",
+      "language": "c++"
+    },
+    {
+      "repo": "fmt",
+      "org": "fmtlib",
+      "language": "c++"
+    },
+    {
+      "repo": "json",
+      "org": "nlohmann",
+      "language": "c++"
+    },
+    {
+      "repo": "simdjson",
+      "org": "simdjson",
+      "language": "c++"
+    },
+    {
+      "repo": "cli",
+      "org": "cli",
+      "language": "go"
+    },
+    {
+      "repo": "go-zero",
+      "org": "zeromicro",
+      "language": "go"
+    },
+    {
+      "repo": "fastjson2",
+      "org": "alibaba",
+      "language": "java"
+    },
+    {
+      "repo": "dubbo",
+      "org": "apache",
+      "language": "java"
+    },
+    {
+      "repo": "logstash",
+      "org": "elastic",
+      "language": "java"
+    },
+    {
+      "repo": "jackson-core",
+      "org": "fasterxml",
+      "language": "java"
+    },
+    {
+      "repo": "jackson-databind",
+      "org": "fasterxml",
+      "language": "java"
+    },
+    {
+      "repo": "jackson-dataformat-xml",
+      "org": "fasterxml",
+      "language": "java"
+    },
+    {
+      "repo": "gson",
+      "org": "google",
+      "language": "java"
+    },
+    {
+      "repo": "jib",
+      "org": "googlecontainertools",
+      "language": "java"
+    },
+    {
+      "repo": "mockito",
+      "org": "mockito",
+      "language": "java"
+    },
+    {
+      "repo": "github-readme-stats",
+      "org": "anuraghazra",
+      "language": "js"
+    },
+    {
+      "repo": "axios",
+      "org": "axios",
+      "language": "js"
+    },
+    {
+      "repo": "dayjs",
+      "org": "iamkun",
+      "language": "js"
+    },
+    {
+      "repo": "svelte",
+      "org": "sveltejs",
+      "language": "js"
+    },
+    {
+      "repo": "astropy",
+      "org": "astropy",
+      "language": "python"
+    },
+    {
+      "repo": "django",
+      "org": "django",
+      "language": "python"
+    },
+    {
+      "repo": "matplotlib",
+      "org": "matplotlib",
+      "language": "python"
+    },
+    {
+      "repo": "seaborn",
+      "org": "mwaskom",
+      "language": "python"
+    },
+    {
+      "repo": "requests",
+      "org": "psf",
+      "language": "python"
+    },
+    {
+      "repo": "xarray",
+      "org": "pydata",
+      "language": "python"
+    },
+    {
+      "repo": "pylint",
+      "org": "pylint-dev",
+      "language": "python"
+    },
+    {
+      "repo": "pytest",
+      "org": "pytest-dev",
+      "language": "python"
+    },
+    {
+      "repo": "scikit-learn",
+      "org": "scikit-learn",
+      "language": "python"
+    },
+    {
+      "repo": "sphinx",
+      "org": "sphinx-doc",
+      "language": "python"
+    },
+    {
+      "repo": "sympy",
+      "org": "sympy",
+      "language": "python"
+    },
+    {
+      "repo": "ripgrep",
+      "org": "BurntSushi",
+      "language": "rust"
+    },
+    {
+      "repo": "clap",
+      "org": "clap-rs",
+      "language": "rust"
+    },
+    {
+      "repo": "nushell",
+      "org": "nushell",
+      "language": "rust"
+    },
+    {
+      "repo": "serde",
+      "org": "serde-rs",
+      "language": "rust"
+    },
+    {
+      "repo": "fd",
+      "org": "sharkdp",
+      "language": "rust"
+    },
+    {
+      "repo": "tokio",
+      "org": "tokio-rs",
+      "language": "rust"
+    },
+    {
+      "repo": "tracing",
+      "org": "tokio-rs",
+      "language": "rust"
+    },
+    {
+      "repo": "darkreader",
+      "org": "darkreader",
+      "language": "ts"
+    },
+    {
+      "repo": "material-ui",
+      "org": "mui",
+      "language": "ts"
+    },
+    {
+      "repo": "core",
+      "org": "vuejs",
+      "language": "ts"
+    }
+  ]
+}

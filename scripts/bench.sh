@@ -24,6 +24,7 @@ if [[ -z "$BENCHMARK" || "$BENCHMARK" == "--help" || "$BENCHMARK" == "-h" ]]; th
   echo "Benchmarks:"
   echo "  youbencha   Custom TDD-style coding tasks (5 built-in tests)"
   echo "  swebench    SWE-Bench Lite real GitHub issues (300 tasks)"
+  echo "  multilang   Multi-language coding tasks (400 tasks, 8 languages)"
   echo ""
   echo "Agents:  claude | codex | gemini | pi"
   echo ""
@@ -37,6 +38,7 @@ if [[ -z "$BENCHMARK" || "$BENCHMARK" == "--help" || "$BENCHMARK" == "-h" ]]; th
   echo "  bench.sh youbencha -a pi -n 2        # Quick pi test, 2 tasks"
   echo "  bench.sh swebench -a claude -n 1     # Single SWE-bench task"
   echo "  bench.sh youbencha -a gemini -n 5    # All 5 youbencha tasks"
+  echo "  bench.sh multilang -a pi -n 10       # 10 multi-language tasks"
   exit 0
 fi
 
@@ -55,8 +57,11 @@ case "$BENCHMARK" in
   swebench)
     exec bash "$SCRIPT_DIR/swebench-run.sh" "$@"
     ;;
+  multilang)
+    exec bash "$SCRIPT_DIR/languages/multilang-run.sh" "$@"
+    ;;
   *)
-    echo "ERROR: Unknown benchmark '$BENCHMARK'. Use: youbencha, swebench" >&2
+    echo "ERROR: Unknown benchmark '$BENCHMARK'. Use: youbencha, swebench, multilang" >&2
     exit 1
     ;;
 esac
